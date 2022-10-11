@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
+import "./LibRLP.sol";
 
 contract Deployer is Test {
     bool public shouldWriteArtifacts;
@@ -163,6 +164,14 @@ contract Deployer is Test {
         }
     }
 
+    function hasDeployment(string memory _name) internal returns (bool) {
+        try vm.readFile(string.concat(deploymentPath, _name, ".artifact.json")) returns (string memory) {
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
     function store(address _contract) internal returns (address) {
         if (bytes(currentDeployment).length != 0) {
             vm.stopBroadcast();
@@ -216,5 +225,17 @@ contract Deployer is Test {
             console.log("");
             console.log("to save artifacts, do Deployer.setShouldWrite(true)");
         }
+    }
+
+    function predict(address deployer, uint256 _txCount, string[] calldata _deployments) internal returns (address) {
+        for (uint256 idx; idx < _deployments.length;) {
+            if (hasDeployment(_deployments[idx])) {
+                --_txCount;
+            }
+            unchecked {
+                ++idx;
+            }
+        }
+        return LibRLP.computeAddress(deployer, _txCount);
     }
 }
