@@ -203,13 +203,18 @@ contract Deployer is Test {
 
     function done() internal {
         if (!shouldWriteArtifacts) {
+            console.log("");
+            console.log("shouldWriteArtifacts=false");
             for (uint256 idx = 0; idx < newArtifacts.length;) {
                 vm.removeFile(newArtifacts[idx]);
+                console.log("removing", newArtifacts[idx]);
 
                 unchecked {
                     ++idx;
                 }
             }
+            console.log("");
+            console.log("to save artifacts, do Deployer.setShouldWrite(true)");
         }
     }
 }
