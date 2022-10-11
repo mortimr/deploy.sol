@@ -62,6 +62,7 @@ contract DummyDeployer is Deployer {
     function _00_deploy_Dummy() internal {
         address dummy;
         if ((dummy = startDeployment("Dummy_v0", "Dummy.deploy.sol/Dummy.json")) == address(0)) {
+            console.log("Built dummy with", address(0));
             dummy = store(address(new Dummy(address(0))));
         }
     }
@@ -69,7 +70,9 @@ contract DummyDeployer is Deployer {
     function _01_deploy_another_Dummy() internal {
         address dummy;
         if ((dummy = startDeployment("Dummy_v1", "Dummy.deploy.sol/Dummy.json")) == address(0)) {
-            dummy = store(address(new Dummy(getDeployment("Dummy_v0"))));
+            address dummy_v0 = getDeployment("Dummy_v0");
+            console.log("Built dummy with", dummy_v0);
+            dummy = store(address(new Dummy(dummy_v0)));
         }
     }
 }

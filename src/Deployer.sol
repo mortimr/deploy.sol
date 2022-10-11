@@ -44,14 +44,12 @@ contract Deployer is Test {
         vm.ffi(call);
     }
 
-    function getJsonKey(string memory _fileContent, string memory _key) internal returns (string memory) {
-        string[] memory call = new string[](6);
+    function getJsonKey(string memory _fileName, string memory _key) internal returns (string memory) {
+        string[] memory call = new string[](4);
         call[0] = "jq";
-        call[1] = "-nc";
-        call[2] = string.concat("$in.", _key);
-        call[3] = "--argjson";
-        call[4] = "in";
-        call[5] = _fileContent;
+        call[1] = "-c";
+        call[2] = string.concat(".", _key);
+        call[3] = _fileName;
 
         return string(vm.ffi(call));
     }
@@ -136,10 +134,10 @@ contract Deployer is Test {
         require(bytes(currentDeployment).length == 0, "ERR=START DEPLOYMENT WHILE ANOTHER IN PROCESS");
         ensureDeploymentArtifactPathExists();
 
-        try vm.readFile(string.concat(deploymentPath, _name, ".artifact.json")) returns (
-            string memory existingArtifactContent
-        ) {
-            string memory addr = getJsonKey(existingArtifactContent, "address");
+        string memory currentDeploymentArtifactPath = string.concat(deploymentPath, _name, ".artifact.json");
+
+        try vm.readFile(currentDeploymentArtifactPath) returns (string memory) {
+            string memory addr = getJsonKey(currentDeploymentArtifactPath, "address");
             if (bytes(addr).length == 44) {
                 address deployedAddress = stringToAddress(slice(bytes(addr), 1, 42));
                 console.log("reusing address for", _name, deployedAddress);
@@ -149,7 +147,7 @@ contract Deployer is Test {
             }
         } catch {
             currentDeployment = _name;
-            currentArtifact = vm.readFile(string.concat(artifactsPath, _artifact));
+            currentArtifact = string.concat(artifactsPath, _artifact);
             deploymentArtifactPath = string.concat(deploymentPath, _name, ".artifact.json");
             vm.startBroadcast();
             return address(0);
@@ -157,8 +155,8 @@ contract Deployer is Test {
     }
 
     function getDeployment(string memory _name) internal returns (address) {
-        string memory existingArtifactContent = vm.readFile(string.concat(deploymentPath, _name, ".artifact.json"));
-        string memory addr = getJsonKey(existingArtifactContent, "address");
+        console.log("CALLED");
+        string memory addr = getJsonKey(string.concat(deploymentPath, _name, ".artifact.json"), "address");
         if (bytes(addr).length == 44) {
             return stringToAddress(slice(bytes(addr), 1, 42));
         } else {
