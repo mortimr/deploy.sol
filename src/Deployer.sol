@@ -227,7 +227,7 @@ contract Deployer is Test {
         }
     }
 
-    function predict(address deployer, uint256 _txCount, string[] calldata _deployments) internal returns (address) {
+    function predict(address deployer, uint256 _txCount, string[] memory _deployments) internal returns (address) {
         for (uint256 idx; idx < _deployments.length;) {
             if (hasDeployment(_deployments[idx])) {
                 --_txCount;
