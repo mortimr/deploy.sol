@@ -155,7 +155,6 @@ contract Deployer is Test {
     }
 
     function getDeployment(string memory _name) internal returns (address) {
-        console.log("CALLED");
         string memory addr = getJsonKey(string.concat(deploymentPath, _name, ".artifact.json"), "address");
         if (bytes(addr).length == 44) {
             return stringToAddress(slice(bytes(addr), 1, 42));
