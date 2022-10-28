@@ -234,6 +234,20 @@ contract Deployer is Test {
         return _contract;
     }
 
+    function bytesToHex(bytes memory buffer) internal pure returns (string memory) {
+        // Fixed buffer size for hexadecimal convertion
+        bytes memory converted = new bytes(buffer.length * 2);
+
+        bytes memory _base = "0123456789abcdef";
+
+        for (uint256 i = 0; i < buffer.length; i++) {
+            converted[i * 2] = _base[uint8(buffer[i]) / _base.length];
+            converted[i * 2 + 1] = _base[uint8(buffer[i]) % _base.length];
+        }
+
+        return string(abi.encodePacked("0x", converted));
+    }
+
     function storeYul(address _contract, bytes memory deploymentBytecode, bytes memory runtimeBytecode)
         internal
         returns (address)
@@ -250,11 +264,11 @@ contract Deployer is Test {
             call[4] = "address";
             call[5] = vm.toString(_contract);
             call[6] = string.concat(
-                "{\"address\": $address, \"bytecode\": ",
-                string(deploymentBytecode),
-                ", \"deployedBytecode\": ",
-                string(runtimeBytecode),
-                "}"
+                "{\"address\": $address, \"bytecode\": \"",
+                string(bytesToHex(deploymentBytecode)),
+                "\", \"deployedBytecode\": \"",
+                string(bytesToHex(runtimeBytecode)),
+                "\"}"
             );
             string memory artifactContent = string(vm.ffi(call));
 
