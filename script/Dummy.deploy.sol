@@ -61,7 +61,7 @@ contract DummyDeployer is Deployer {
 
     function _00_deploy_Dummy() internal {
         address dummy;
-        if ((dummy = startDeployment("Dummy_v0", "Dummy.deploy.sol/Dummy.json")) == address(0)) {
+        if ((dummy = startYulDeployment("TURBOMEV")) == address(0)) {
             dummy = store(address(new Dummy(address(0))));
         }
     }

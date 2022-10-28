@@ -200,34 +200,62 @@ contract Deployer is Test {
             vm.stopBroadcast();
             console.log("deployed", currentDeployment, "at", _contract);
             string[] memory call;
-            if (bytes(currentArtifact).length > 0) {
-                call = new string[](10);
-                call[0] = "jq";
-                call[1] = "-nSr";
-                call[2] = "-r";
-                call[3] = "--arg";
-                call[4] = "address";
-                call[5] = vm.toString(_contract);
-                call[6] = "--argjson";
-                call[7] = "abi";
-                call[8] = getJsonKey(currentArtifact, "abi");
-                call[9] = string.concat(
-                    "{\"address\": $address, \"abi\": $abi, \"bytecode\": ",
-                    getJsonKey(currentArtifact, "bytecode.object"),
-                    ", \"deployedBytecode\": ",
-                    getJsonKey(currentArtifact, "deployedBytecode.object"),
-                    "}"
-                );
-            } else {
-                call = new string[](7);
-                call[0] = "jq";
-                call[1] = "-nSr";
-                call[2] = "-r";
-                call[3] = "--arg";
-                call[4] = "address";
-                call[5] = vm.toString(_contract);
-                call[6] = "{\"address\": $address, \"bytecode\": \"0x00\"}";
+            call = new string[](10);
+            call[0] = "jq";
+            call[1] = "-nSr";
+            call[2] = "-r";
+            call[3] = "--arg";
+            call[4] = "address";
+            call[5] = vm.toString(_contract);
+            call[6] = "--argjson";
+            call[7] = "abi";
+            call[8] = getJsonKey(currentArtifact, "abi");
+            call[9] = string.concat(
+                "{\"address\": $address, \"abi\": $abi, \"bytecode\": ",
+                getJsonKey(currentArtifact, "bytecode.object"),
+                ", \"deployedBytecode\": ",
+                getJsonKey(currentArtifact, "deployedBytecode.object"),
+                "}"
+            );
+            string memory artifactContent = string(vm.ffi(call));
+
+            vm.writeFile(deploymentArtifactPath, artifactContent);
+            console.log("stored deployment artifact at", deploymentArtifactPath);
+
+            if (!isNewArtifact[deploymentArtifactPath]) {
+                isNewArtifact[deploymentArtifactPath] = true;
+                newArtifacts.push(deploymentArtifactPath);
             }
+
+            currentDeployment = "";
+            currentArtifact = "";
+            deploymentArtifactPath = "";
+        }
+        return _contract;
+    }
+
+    function storeYul(address _contract, bytes memory deploymentBytecode, bytes memory runtimeBytecode)
+        internal
+        returns (address)
+    {
+        if (bytes(currentDeployment).length != 0) {
+            vm.stopBroadcast();
+            console.log("deployed", currentDeployment, "at", _contract);
+            string[] memory call;
+            call = new string[](7);
+            call[0] = "jq";
+            call[1] = "-nSr";
+            call[2] = "-r";
+            call[3] = "--arg";
+            call[4] = "address";
+            call[5] = vm.toString(_contract);
+            call[6] = string.concat(
+                "{\"address\": $address, \"bytecode\": ",
+                string(deploymentBytecode),
+                ", \"deployedBytecode\": ",
+                string(runtimeBytecode),
+                "}"
+            );
             string memory artifactContent = string(vm.ffi(call));
 
             vm.writeFile(deploymentArtifactPath, artifactContent);
