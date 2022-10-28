@@ -155,6 +155,29 @@ contract Deployer is Test {
         }
     }
 
+    function startYulDeployment(string memory _name) internal returns (address) {
+        require(bytes(currentDeployment).length == 0, "ERR=START DEPLOYMENT WHILE ANOTHER IN PROCESS");
+        ensureDeploymentArtifactPathExists();
+
+        string memory currentDeploymentArtifactPath = string.concat(deploymentPath, _name, ".artifact.json");
+
+        try vm.readFile(currentDeploymentArtifactPath) returns (string memory) {
+            string memory addr = getJsonKey(currentDeploymentArtifactPath, "address");
+            if (bytes(addr).length == 44) {
+                address deployedAddress = stringToAddress(slice(bytes(addr), 1, 42));
+                console.log("reusing address for", _name, deployedAddress);
+                return deployedAddress;
+            } else {
+                revert("ERR=INVALID ADDRESS FROM ARTIFACT");
+            }
+        } catch {
+            currentDeployment = _name;
+            deploymentArtifactPath = string.concat(deploymentPath, _name, ".artifact.json");
+            vm.startBroadcast();
+            return address(0);
+        }
+    }
+
     function getDeployment(string memory _name) internal returns (address) {
         string memory addr = getJsonKey(string.concat(deploymentPath, _name, ".artifact.json"), "address");
         if (bytes(addr).length == 44) {
@@ -176,23 +199,35 @@ contract Deployer is Test {
         if (bytes(currentDeployment).length != 0) {
             vm.stopBroadcast();
             console.log("deployed", currentDeployment, "at", _contract);
-            string[] memory call = new string[](10);
-            call[0] = "jq";
-            call[1] = "-nSr";
-            call[2] = "-r";
-            call[3] = "--arg";
-            call[4] = "address";
-            call[5] = vm.toString(_contract);
-            call[6] = "--argjson";
-            call[7] = "abi";
-            call[8] = getJsonKey(currentArtifact, "abi");
-            call[9] = string.concat(
-                "{\"address\": $address, \"abi\": $abi, \"bytecode\": ",
-                getJsonKey(currentArtifact, "bytecode.object"),
-                ", \"deployedBytecode\": ",
-                getJsonKey(currentArtifact, "deployedBytecode.object"),
-                "}"
-            );
+            string[] memory call;
+            if (bytes(currentArtifact).length > 0) {
+                call = new string[](10);
+                call[0] = "jq";
+                call[1] = "-nSr";
+                call[2] = "-r";
+                call[3] = "--arg";
+                call[4] = "address";
+                call[5] = vm.toString(_contract);
+                call[6] = "--argjson";
+                call[7] = "abi";
+                call[8] = getJsonKey(currentArtifact, "abi");
+                call[9] = string.concat(
+                    "{\"address\": $address, \"abi\": $abi, \"bytecode\": ",
+                    getJsonKey(currentArtifact, "bytecode.object"),
+                    ", \"deployedBytecode\": ",
+                    getJsonKey(currentArtifact, "deployedBytecode.object"),
+                    "}"
+                );
+            } else {
+                call = new string[](7);
+                call[0] = "jq";
+                call[1] = "-nSr";
+                call[2] = "-r";
+                call[3] = "--arg";
+                call[4] = "address";
+                call[5] = vm.toString(_contract);
+                call[6] = "{\"address\": $address, \"bytecode\": \"0x00\"}";
+            }
             string memory artifactContent = string(vm.ffi(call));
 
             vm.writeFile(deploymentArtifactPath, artifactContent);
