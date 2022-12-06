@@ -55,6 +55,16 @@ contract Deployer is Test {
         return string(vm.ffi(call));
     }
 
+    function getRawJsonKey(string memory _fileName, string memory _key) internal returns (string memory) {
+        string[] memory call = new string[](4);
+        call[0] = "jq";
+        call[1] = "-cr";
+        call[2] = string.concat(".", _key);
+        call[3] = _fileName;
+
+        return string(vm.ffi(call));
+    }
+
     function slice(bytes memory _bytes, uint256 _start, uint256 _length) internal pure returns (bytes memory) {
         require(_length + 31 >= _length, "slice_overflow");
         require(_bytes.length >= _start + _length, "slice_outOfBounds");
@@ -314,5 +324,57 @@ contract Deployer is Test {
             }
         }
         return LibRLP.computeAddress(deployer, _txCount);
+    }
+
+    function mergeArtifacts(
+        string memory proxyDeployment,
+        string memory implementationDeployment,
+        string memory destinationDeployment
+    ) internal {
+        string memory proxyArtifactPath = string.concat(deploymentPath, proxyDeployment, ".artifact.json");
+        string memory implementationArtifactPath =
+            string.concat(deploymentPath, implementationDeployment, ".artifact.json");
+        string memory destinationArtifactPath = string.concat(deploymentPath, destinationDeployment, ".artifact.json");
+
+        console.log(
+            string.concat(
+                "merging ", proxyDeployment, " and ", implementationDeployment, " into ", destinationDeployment
+            )
+        );
+
+        string[] memory call;
+        call = new string[](3);
+        call[0] = "bash";
+        call[1] = "-c";
+        call[2] = string.concat(
+            "echo $(cat ",
+            implementationArtifactPath,
+            " | jq .abi | sed '$d'),$(cat ",
+            proxyArtifactPath,
+            " | jq .abi | sed '1d') | jq"
+        );
+
+        string memory mergedAbis = string(vm.ffi(call));
+
+        call = new string[](10);
+        call[0] = "jq";
+        call[1] = "-nSr";
+        call[2] = "-r";
+        call[3] = "--arg";
+        call[4] = "address";
+        call[5] = string(bytesToHex(bytes(getRawJsonKey(proxyArtifactPath, "address"))));
+        call[6] = "--argjson";
+        call[7] = "abi";
+        call[8] = mergedAbis;
+        call[9] = string.concat(
+            "{\"address\": $address, \"abi\": $abi, \"bytecode\": ",
+            getJsonKey(proxyArtifactPath, "bytecode"),
+            ", \"deployedBytecode\": ",
+            getJsonKey(proxyArtifactPath, "deployedBytecode"),
+            "}"
+        );
+        string memory artifactContent = string(vm.ffi(call));
+
+        vm.writeFile(destinationArtifactPath, artifactContent);
     }
 }

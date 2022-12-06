@@ -55,13 +55,14 @@ contract DummyDeployer is Deployer {
     function run() public {
         _00_deploy_Dummy();
         _01_deploy_another_Dummy();
+        _02_merge_artifacts();
 
         done();
     }
 
     function _00_deploy_Dummy() internal {
         address dummy;
-        if ((dummy = startYulDeployment("TURBOMEV")) == address(0)) {
+        if ((dummy = startDeployment("Dummy_v0", "Dummy.deploy.sol/Dummy.json")) == address(0)) {
             dummy = store(address(new Dummy(address(0))));
         }
     }
@@ -72,5 +73,9 @@ contract DummyDeployer is Deployer {
             address dummy_v0 = getDeployment("Dummy_v0");
             dummy = store(address(new Dummy(dummy_v0)));
         }
+    }
+
+    function _02_merge_artifacts() internal {
+        mergeArtifacts("Dummy_v1", "Dummy_v0", "Dummy_v2");
     }
 }
