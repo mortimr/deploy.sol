@@ -56,6 +56,7 @@ contract DummyDeployer is Deployer {
         _00_deploy_Dummy();
         _01_deploy_another_Dummy();
         _02_merge_artifacts();
+        _03_create_abi_artifacts();
 
         done();
     }
@@ -77,5 +78,9 @@ contract DummyDeployer is Deployer {
 
     function _02_merge_artifacts() internal {
         mergeArtifacts("Dummy_v1", "Dummy_v0", "Dummy_v2");
+    }
+
+    function _03_create_abi_artifacts() internal {
+        createAbiArtifact("Dummy_v2", "Dummy");
     }
 }

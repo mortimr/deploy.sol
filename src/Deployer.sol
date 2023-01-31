@@ -377,4 +377,16 @@ contract Deployer is Test {
 
         vm.writeFile(destinationArtifactPath, artifactContent);
     }
+
+    function createAbiArtifact(string memory deploymentArtifact, string memory destinationAbiArtifact) internal {
+        string memory artifactPath = string.concat(deploymentPath, deploymentArtifact, ".artifact.json");
+        string memory abiArtifactPath = string.concat(deploymentPath, destinationAbiArtifact, ".abi.json");
+        console.log(string.concat("create ", abiArtifactPath, " abi artifact from ", artifactPath));
+        string[] memory call;
+        call = new string[](3);
+        call[0] = "bash";
+        call[1] = "-c";
+        call[2] = string.concat("cat ", artifactPath, " | jq .abi > ", abiArtifactPath);
+        vm.ffi(call);
+    }
 }
