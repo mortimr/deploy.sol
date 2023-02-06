@@ -197,7 +197,7 @@ contract Deployer is Test {
         }
     }
 
-    function hasDeployment(string memory _name) internal returns (bool) {
+    function hasDeployment(string memory _name) internal view returns (bool) {
         try vm.readFile(string.concat(deploymentPath, _name, ".artifact.json")) returns (string memory) {
             return true;
         } catch {
@@ -314,7 +314,11 @@ contract Deployer is Test {
         }
     }
 
-    function predict(address deployer, uint256 _txCount, string[] memory _deployments) internal returns (address) {
+    function predict(address deployer, uint256 _txCount, string[] memory _deployments)
+        internal
+        view
+        returns (address)
+    {
         for (uint256 idx; idx < _deployments.length;) {
             if (hasDeployment(_deployments[idx])) {
                 --_txCount;

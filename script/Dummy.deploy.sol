@@ -20,14 +20,14 @@ contract DeployConfig is Test {
         return keccak256(bytes(a)) == keccak256(bytes(b));
     }
 
-    function getDeploymentName() public returns (string memory deploymentName) {
+    function getDeploymentName() public view returns (string memory deploymentName) {
         deploymentName = vm.envString("FOUNDRY_DEPLOYMENT_NAME");
         if (bytes(deploymentName).length == 0) {
             revert("ERR=FOUNDRY_DEPLOYMENT_NAME IS UNDEFINED");
         }
     }
 
-    function getDeploymentPath() external returns (string memory) {
+    function getDeploymentPath() external view returns (string memory) {
         string memory deploymentName = getDeploymentName();
         if (eq(deploymentName, "local")) {
             return "/deployments/local";
@@ -38,7 +38,7 @@ contract DeployConfig is Test {
         }
     }
 
-    function shouldWrite() external returns (bool) {
+    function shouldWrite() external view returns (bool) {
         return vm.envBool("FOUNDRY_WRITE_ARTIFACTS");
     }
 }
