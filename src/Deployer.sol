@@ -27,32 +27,24 @@ contract Deployer is Test {
     }
 
     function setDeploymentPath(string memory _path) internal {
-        deploymentPath = string.concat(vm.projectRoot(), _path, "/");
+        deploymentPath = string.concat(vulcan.hevm.projectRoot(), _path, "/");
         console.log("set deployment path", deploymentPath);
     }
 
     function setArtifactsPath(string memory _path) internal {
-        artifactsPath = string.concat(vm.projectRoot(), _path, "/");
+        artifactsPath = string.concat(vulcan.hevm.projectRoot(), _path, "/");
         console.log("set artifacts path", deploymentPath);
     }
 
     function ensureDeploymentArtifactPathExists() internal {
-        string[] memory call = new string[](3);
-        call[0] = "mkdir";
-        call[1] = "-p";
-        call[2] = deploymentPath;
-
-        vm.ffi(call);
+        commands.run(["mkdir", "-p", deploymentPath]);
     }
 
     function getJsonKey(string memory _fileName, string memory _key) internal returns (string memory) {
-        string[] memory call = new string[](4);
-        call[0] = "jq";
-        call[1] = "-c";
-        call[2] = string.concat(".", _key);
-        call[3] = _fileName;
+        CommandOutput memory output =
+            commands.run(["jq", "-c", string.concat(".", _key), _fileName]).expect("jq command failed");
 
-        return string(vm.ffi(call));
+        return string(output.stdout);
     }
 
     function getRawJsonKey(string memory _fileName, string memory _key) internal returns (string memory) {
@@ -62,7 +54,9 @@ contract Deployer is Test {
         call[2] = string.concat(".", _key);
         call[3] = _fileName;
 
-        return string(vm.ffi(call));
+        CommandOutput memory output =
+            commands.run(["jq", "-cr", string.concat(".", _key), _fileName]).expect("jq command failed");
+        return string(output.stdout);
     }
 
     function slice(bytes memory _bytes, uint256 _start, uint256 _length) internal pure returns (bytes memory) {
@@ -147,7 +141,7 @@ contract Deployer is Test {
 
         string memory currentDeploymentArtifactPath = string.concat(deploymentPath, _name, ".artifact.json");
 
-        try vm.readFile(currentDeploymentArtifactPath) returns (string memory) {
+        try vulcan.hevm.readFile(currentDeploymentArtifactPath) returns (string memory) {
             string memory addr = getJsonKey(currentDeploymentArtifactPath, "address");
             if (bytes(addr).length == 44) {
                 address deployedAddress = stringToAddress(slice(bytes(addr), 1, 42));
@@ -160,7 +154,7 @@ contract Deployer is Test {
             currentDeployment = _name;
             currentArtifact = string.concat(artifactsPath, _artifact);
             deploymentArtifactPath = string.concat(deploymentPath, _name, ".artifact.json");
-            vm.startBroadcast();
+            vulcan.hevm.startBroadcast();
             return address(0);
         }
     }
@@ -171,7 +165,7 @@ contract Deployer is Test {
 
         string memory currentDeploymentArtifactPath = string.concat(deploymentPath, _name, ".artifact.json");
 
-        try vm.readFile(currentDeploymentArtifactPath) returns (string memory) {
+        try vulcan.hevm.readFile(currentDeploymentArtifactPath) returns (string memory) {
             string memory addr = getJsonKey(currentDeploymentArtifactPath, "address");
             if (bytes(addr).length == 44) {
                 address deployedAddress = stringToAddress(slice(bytes(addr), 1, 42));
@@ -183,7 +177,7 @@ contract Deployer is Test {
         } catch {
             currentDeployment = _name;
             deploymentArtifactPath = string.concat(deploymentPath, _name, ".artifact.json");
-            vm.startBroadcast();
+            vulcan.hevm.startBroadcast();
             return address(0);
         }
     }
@@ -198,7 +192,7 @@ contract Deployer is Test {
     }
 
     function hasDeployment(string memory _name) internal view returns (bool) {
-        try vm.readFile(string.concat(deploymentPath, _name, ".artifact.json")) returns (string memory) {
+        try vulcan.hevm.readFile(string.concat(deploymentPath, _name, ".artifact.json")) returns (string memory) {
             return true;
         } catch {
             return false;
@@ -207,29 +201,31 @@ contract Deployer is Test {
 
     function store(address _contract) internal returns (address) {
         if (bytes(currentDeployment).length != 0) {
-            vm.stopBroadcast();
+            vulcan.hevm.stopBroadcast();
             console.log("deployed", currentDeployment, "at", _contract);
-            string[] memory call;
-            call = new string[](10);
-            call[0] = "jq";
-            call[1] = "-nSr";
-            call[2] = "-r";
-            call[3] = "--arg";
-            call[4] = "address";
-            call[5] = vm.toString(_contract);
-            call[6] = "--argjson";
-            call[7] = "abi";
-            call[8] = getJsonKey(currentArtifact, "abi");
-            call[9] = string.concat(
-                "{\"address\": $address, \"abi\": $abi, \"bytecode\": ",
-                getJsonKey(currentArtifact, "bytecode.object"),
-                ", \"deployedBytecode\": ",
-                getJsonKey(currentArtifact, "deployedBytecode.object"),
-                "}"
-            );
-            string memory artifactContent = string(vm.ffi(call));
+            CommandOutput memory output = commands.run(
+                [
+                    "jq",
+                    "-nSr",
+                    "-r",
+                    "--arg",
+                    "address",
+                    vulcan.hevm.toString(_contract),
+                    "--argjson",
+                    "abi",
+                    getJsonKey(currentArtifact, "abi"),
+                    string.concat(
+                        "{\"address\": $address, \"abi\": $abi, \"bytecode\": ",
+                        getJsonKey(currentArtifact, "bytecode.object"),
+                        ", \"deployedBytecode\": ",
+                        getJsonKey(currentArtifact, "deployedBytecode.object"),
+                        "}"
+                    )
+                ]
+            ).expect("jq command failed");
+            string memory artifactContent = string(output.stdout);
 
-            vm.writeFile(deploymentArtifactPath, artifactContent);
+            vulcan.hevm.writeFile(deploymentArtifactPath, artifactContent);
             console.log("stored deployment artifact at", deploymentArtifactPath);
 
             if (!isNewArtifact[deploymentArtifactPath]) {
@@ -263,26 +259,28 @@ contract Deployer is Test {
         returns (address)
     {
         if (bytes(currentDeployment).length != 0) {
-            vm.stopBroadcast();
+            vulcan.hevm.stopBroadcast();
             console.log("deployed", currentDeployment, "at", _contract);
-            string[] memory call;
-            call = new string[](7);
-            call[0] = "jq";
-            call[1] = "-nSr";
-            call[2] = "-r";
-            call[3] = "--arg";
-            call[4] = "address";
-            call[5] = vm.toString(_contract);
-            call[6] = string.concat(
-                "{\"address\": $address, \"bytecode\": \"",
-                string(bytesToHex(deploymentBytecode)),
-                "\", \"deployedBytecode\": \"",
-                string(bytesToHex(runtimeBytecode)),
-                "\"}"
-            );
-            string memory artifactContent = string(vm.ffi(call));
+            CommandOutput memory output = commands.run(
+                [
+                    "jq",
+                    "-nSr",
+                    "-r",
+                    "--arg",
+                    "address",
+                    vulcan.hevm.toString(_contract),
+                    string.concat(
+                        "{\"address\": $address, \"bytecode\": \"",
+                        string(bytesToHex(deploymentBytecode)),
+                        "\", \"deployedBytecode\": \"",
+                        string(bytesToHex(runtimeBytecode)),
+                        "\"}"
+                    )
+                ]
+            ).expect("jq command failed");
+            string memory artifactContent = string(output.stdout);
 
-            vm.writeFile(deploymentArtifactPath, artifactContent);
+            vulcan.hevm.writeFile(deploymentArtifactPath, artifactContent);
             console.log("stored deployment artifact at", deploymentArtifactPath);
 
             if (!isNewArtifact[deploymentArtifactPath]) {
@@ -302,7 +300,7 @@ contract Deployer is Test {
             console.log("");
             console.log("shouldWriteArtifacts=false");
             for (uint256 idx = 0; idx < newArtifacts.length;) {
-                vm.removeFile(newArtifacts[idx]);
+                vulcan.hevm.removeFile(newArtifacts[idx]);
                 console.log("removing", newArtifacts[idx]);
 
                 unchecked {
@@ -346,51 +344,51 @@ contract Deployer is Test {
             )
         );
 
-        string[] memory call;
-        call = new string[](3);
-        call[0] = "bash";
-        call[1] = "-c";
-        call[2] = string.concat(
-            "echo $(cat ",
-            implementationArtifactPath,
-            " | jq .abi | sed '$d'),$(cat ",
-            proxyArtifactPath,
-            " | jq .abi | sed '1d') | jq"
-        );
+        CommandOutput memory output = commands.run(
+            [
+                "bash",
+                "-c",
+                string.concat(
+                    "echo $(cat ",
+                    implementationArtifactPath,
+                    " | jq .abi | sed '$d'),$(cat ",
+                    proxyArtifactPath,
+                    " | jq .abi | sed '1d') | jq"
+                )
+            ]
+        ).expect("merge command failed");
 
-        string memory mergedAbis = string(vm.ffi(call));
+        string memory mergedAbis = string(output.stdout);
 
-        call = new string[](10);
-        call[0] = "jq";
-        call[1] = "-nSr";
-        call[2] = "-r";
-        call[3] = "--arg";
-        call[4] = "address";
-        call[5] = string(bytesToHex(bytes(getRawJsonKey(proxyArtifactPath, "address"))));
-        call[6] = "--argjson";
-        call[7] = "abi";
-        call[8] = mergedAbis;
-        call[9] = string.concat(
-            "{\"address\": $address, \"abi\": $abi, \"bytecode\": ",
-            getJsonKey(proxyArtifactPath, "bytecode"),
-            ", \"deployedBytecode\": ",
-            getJsonKey(proxyArtifactPath, "deployedBytecode"),
-            "}"
-        );
-        string memory artifactContent = string(vm.ffi(call));
+        output = commands.run(
+            [
+                "jq",
+                "-nSr",
+                "-r",
+                "--arg",
+                "address",
+                string(bytesToHex(bytes(getRawJsonKey(proxyArtifactPath, "address")))),
+                "--argjson",
+                "abi",
+                mergedAbis,
+                string.concat(
+                    "{\"address\": $address, \"abi\": $abi, \"bytecode\": ",
+                    getJsonKey(proxyArtifactPath, "bytecode"),
+                    ", \"deployedBytecode\": ",
+                    getJsonKey(proxyArtifactPath, "deployedBytecode"),
+                    "}"
+                )
+            ]
+        ).expect("jq command failed");
+        string memory artifactContent = string(output.stdout);
 
-        vm.writeFile(destinationArtifactPath, artifactContent);
+        vulcan.hevm.writeFile(destinationArtifactPath, artifactContent);
     }
 
     function createAbiArtifact(string memory deploymentArtifact, string memory destinationAbiArtifact) internal {
         string memory artifactPath = string.concat(deploymentPath, deploymentArtifact, ".artifact.json");
         string memory abiArtifactPath = string.concat(deploymentPath, destinationAbiArtifact, ".abi.json");
         console.log(string.concat("create ", abiArtifactPath, " abi artifact from ", artifactPath));
-        string[] memory call;
-        call = new string[](3);
-        call[0] = "bash";
-        call[1] = "-c";
-        call[2] = string.concat("cat ", artifactPath, " | jq .abi > ", abiArtifactPath);
-        vm.ffi(call);
+        commands.run(["bash", "-c", string.concat("cat ", artifactPath, " | jq .abi > ", abiArtifactPath)]);
     }
 }

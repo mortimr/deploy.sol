@@ -21,7 +21,7 @@ contract DeployConfig is Test {
     }
 
     function getDeploymentName() public view returns (string memory deploymentName) {
-        deploymentName = vm.envString("FOUNDRY_DEPLOYMENT_NAME");
+        deploymentName = vulcan.hevm.envString("FOUNDRY_DEPLOYMENT_NAME");
         if (bytes(deploymentName).length == 0) {
             revert("ERR=FOUNDRY_DEPLOYMENT_NAME IS UNDEFINED");
         }
@@ -39,7 +39,7 @@ contract DeployConfig is Test {
     }
 
     function shouldWrite() external view returns (bool) {
-        return vm.envBool("FOUNDRY_WRITE_ARTIFACTS");
+        return vulcan.hevm.envBool("FOUNDRY_WRITE_ARTIFACTS");
     }
 }
 
