@@ -6,6 +6,7 @@ import "./LibRLP.sol";
 
 contract Deployer is Test {
     bool public shouldWriteArtifacts;
+    bool public shouldBroadcast;
 
     string public deploymentPath;
     string public artifactsPath;
@@ -24,6 +25,10 @@ contract Deployer is Test {
 
     function setShouldWrite(bool value) internal {
         shouldWriteArtifacts = value;
+    }
+
+    function setShouldBroadcast(bool value) internal {
+        shouldBroadcast = value;
     }
 
     function setDeploymentPath(string memory _path) internal {
@@ -160,7 +165,9 @@ contract Deployer is Test {
             currentDeployment = _name;
             currentArtifact = string.concat(artifactsPath, _artifact);
             deploymentArtifactPath = string.concat(deploymentPath, _name, ".artifact.json");
-            vm.startBroadcast();
+            if (shouldBroadcast) {
+                vm.startBroadcast();
+            }
             return address(0);
         }
     }
@@ -183,7 +190,9 @@ contract Deployer is Test {
         } catch {
             currentDeployment = _name;
             deploymentArtifactPath = string.concat(deploymentPath, _name, ".artifact.json");
-            vm.startBroadcast();
+            if (shouldBroadcast) {
+                vm.startBroadcast();
+            }
             return address(0);
         }
     }
@@ -207,7 +216,9 @@ contract Deployer is Test {
 
     function store(address _contract) internal returns (address) {
         if (bytes(currentDeployment).length != 0) {
-            vm.stopBroadcast();
+            if (shouldBroadcast) {
+                vm.stopBroadcast();
+            }
             console.log("deployed", currentDeployment, "at", _contract);
             string[] memory call;
             call = new string[](10);
@@ -245,7 +256,7 @@ contract Deployer is Test {
     }
 
     function bytesToHex(bytes memory buffer) internal pure returns (string memory) {
-        // Fixed buffer size for hexadecimal convertion
+        // Fixed buffer size for hexadecimal conversion
         bytes memory converted = new bytes(buffer.length * 2);
 
         bytes memory _base = "0123456789abcdef";
@@ -263,7 +274,9 @@ contract Deployer is Test {
         returns (address)
     {
         if (bytes(currentDeployment).length != 0) {
-            vm.stopBroadcast();
+            if (shouldBroadcast) {
+                vm.stopBroadcast();
+            }
             console.log("deployed", currentDeployment, "at", _contract);
             string[] memory call;
             call = new string[](7);
