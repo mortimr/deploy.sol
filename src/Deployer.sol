@@ -6,7 +6,7 @@ import "./LibRLP.sol";
 
 contract Deployer is Test {
     bool public shouldWriteArtifacts;
-    bool public shouldBroadcast;
+    bool public shouldBroadcast = true;
 
     string public deploymentPath;
     string public artifactsPath;
@@ -27,7 +27,7 @@ contract Deployer is Test {
         shouldWriteArtifacts = value;
     }
 
-    function setShouldBroadcast(bool value) internal {
+    function setShouldBroadcast(bool value) public {
         shouldBroadcast = value;
     }
 
